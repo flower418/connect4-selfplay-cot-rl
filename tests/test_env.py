@@ -14,6 +14,8 @@ from connect4.env import (
 from connect4.oracle import evaluate_position
 from seed.build_seed_raw import build_seed_raw
 from seed.build_seed_verified import build_seed_verified
+from seed.generate_seed_positions import generate_seed_positions
+from seed.parse_seed_responses import parse_seed_response
 from training.build_sft import build_sft_records
 
 
@@ -94,6 +96,24 @@ class Connect4EnvTest(unittest.TestCase):
             self.assertGreater(build_seed_verified(str(raw_path), str(verified_path)), 0)
             self.assertGreater(build_sft_records(str(verified_path), str(sft_path)), 0)
             self.assertTrue(sft_path.exists())
+
+    def test_generate_seed_positions(self):
+        import tempfile
+        from pathlib import Path
+        from data_pipeline.io import read_jsonl
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "seed_candidates.jsonl"
+            count = generate_seed_positions(str(path), oracle_games=2)
+            self.assertGreater(count, 0)
+            rows = list(read_jsonl(path))
+            self.assertEqual(count, len(rows))
+
+    def test_parse_seed_response(self):
+        text = "分析：这步先占中路并保持威胁。\n最终落子列: 3"
+        analysis, action = parse_seed_response(text)
+        self.assertIn("占中路", analysis)
+        self.assertEqual(action, 3)
 
 
 if __name__ == "__main__":

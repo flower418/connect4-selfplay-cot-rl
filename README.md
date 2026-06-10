@@ -25,10 +25,11 @@ The first implementation target is the data pipeline:
 - implemented first-pass verification and `faithfulness_score_v1`
 - implemented SFT and GRPO export builders
 - added baseline tests for rules, canonicalization, and oracle immediate-win behavior
+- defined the formal cold-start direction as `oracle truth + DeepSeek CoT + verifier + SFT`
 
 ### In progress
 
-- seed SFT cold-start data pipeline
+- DeepSeek-backed seed SFT cold-start data pipeline
 - self-play raw generation pipeline
 - verl reward integration for GRPO
 

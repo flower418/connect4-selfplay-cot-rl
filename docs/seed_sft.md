@@ -10,28 +10,26 @@ Before self-play, build a clean supervised dataset that teaches the base model:
 - must-block recognition
 - simple positional preference
 
-## Current implementation
+## Formal implementation target
 
-The repository now includes a first-pass seed pipeline:
+The formal seed pipeline is:
 
-1. `seed/build_seed_raw.py`
-   - emits seed move-level raw samples from curated tactical templates
-   - uses the oracle to choose the target move
-   - writes `data/seed/seed_positions_raw.jsonl`
+1. generate candidate positions
+2. compute oracle truth labels
+3. call `deepseek-v4-pro` for chain-of-thought generation
+4. parse model output into `analysis + final column`
+5. verify legality / oracle quality / tactical claims
+6. export clean SFT records
 
-2. `seed/build_seed_verified.py`
-   - runs the same verifier stack used later in self-play
-   - writes `data/seed/seed_positions_verified.jsonl`
-
-3. `training/build_sft.py`
-   - exports `data/train/seed_sft.jsonl`
+The template-based seed builder remains only as a local fallback baseline.
 
 ## Recommended near-term usage
 
 Run:
 
 ```bash
-python3 seed/build_seed_raw.py
+python3 seed/generate_seed_positions.py
+python3 seed/collect_seed_cot.py
 python3 seed/build_seed_verified.py
 python3 training/build_sft.py \
   --input data/seed/seed_positions_verified.jsonl \
@@ -40,24 +38,20 @@ python3 training/build_sft.py \
 
 ## What this version is and is not
 
-This version is enough to unblock:
+This version is meant to unblock:
 
 - schema finalization
 - verifier integration
-- first SFT dry runs
+- formal DeepSeek-backed cold-start data collection
+- first SFT dry runs against a real strong-model teacher
 
-This version is not enough yet for serious cold-start quality, because it still lacks:
+## Local config
 
-- 50-100 seed games
-- stronger-model-written reasoning traces
-- broader tactical motifs
-- deduplicated mirrored variants
-- held-out seed validation split
+Set the DeepSeek credential in a local ignored file such as `.env.local`.
 
-## Next quality step
+Expected variables:
 
-The right next improvement is:
-
-- keep the current template-based seed builder as a deterministic baseline
-- add a second seed source from oracle-guided short games
-- optionally rewrite responses with a stronger model while keeping oracle action labels fixed
+```bash
+DEEPSEEK_API_KEY=...
+DEEPSEEK_MODEL=deepseek-v4-pro
+```
