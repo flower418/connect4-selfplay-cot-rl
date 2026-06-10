@@ -14,6 +14,30 @@ The first implementation target is the data pipeline:
 - DPO pair building
 - eval split freezing and leakage prevention
 
+## Progress
+
+### Done
+
+- initialized repository and tracked the source project document
+- implemented the Connect4 rules engine and board canonicalization
+- implemented a first-pass oracle with minimax + alpha-beta
+- implemented verified sample schemas and JSONL IO
+- implemented first-pass verification and `faithfulness_score_v1`
+- implemented SFT and GRPO export builders
+- added baseline tests for rules, canonicalization, and oracle immediate-win behavior
+
+### In progress
+
+- seed SFT cold-start data pipeline
+- self-play raw generation pipeline
+- verl reward integration for GRPO
+
+### Next
+
+- build seed position corpus and verified seed labels
+- export seed SFT training set for `Qwen2.5-0.5B-Instruct`
+- add response parser and self-play sample generator
+
 ## Planned repository layout
 
 ```text

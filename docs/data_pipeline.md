@@ -1,5 +1,25 @@
 # Data Pipeline Notes
 
+## Work log
+
+### Implemented
+
+- canonical board state representation in `connect4/env.py`
+- mirror-stable `canonical_id` for dedup and eval leakage filtering
+- minimax + alpha-beta oracle in `connect4/oracle.py`
+- raw / verified / SFT / GRPO schemas in `data_pipeline/schemas.py`
+- first-pass verifier in `verification/cleaner.py`
+- JSONL export builders for SFT and GRPO in `training/`
+- baseline unit tests in `tests/test_env.py`
+
+### Not implemented yet
+
+- self-play generation runner
+- response parser from free-form model text
+- eval split freezer
+- full `verl` reward function and rollout integration
+- full faithfulness metric beyond `v1`
+
 ## Training route
 
 - base model: `Qwen2.5-0.5B-Instruct`
@@ -95,3 +115,20 @@ Actual reward computation can later read:
 - oracle best move set
 - tactical tags
 - faithfulness score
+
+## Seed SFT plan
+
+The cold-start phase should use a curated seed corpus before any self-play.
+
+Recommended seed flow:
+
+1. create seed positions from tactical templates and short oracle-play games
+2. attach oracle labels with verifier
+3. optionally replace oracle-written reasoning with stronger-model reasoning later
+4. export a clean SFT dataset for the first supervised run
+
+The repository implementation for this phase uses:
+
+- `data/seed/seed_positions_raw.jsonl`
+- `data/seed/seed_positions_verified.jsonl`
+- `data/train/seed_sft.jsonl`

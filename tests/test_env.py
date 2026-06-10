@@ -12,6 +12,9 @@ from connect4.env import (
     winner,
 )
 from connect4.oracle import evaluate_position
+from seed.build_seed_raw import build_seed_raw
+from seed.build_seed_verified import build_seed_verified
+from training.build_sft import build_sft_records
 
 
 class Connect4EnvTest(unittest.TestCase):
@@ -78,6 +81,19 @@ class Connect4EnvTest(unittest.TestCase):
             ]
         )
         self.assertNotIn(0, legal_moves(board))
+
+    def test_seed_pipeline_builds_records(self):
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            raw_path = Path(tmpdir) / "seed_raw.jsonl"
+            verified_path = Path(tmpdir) / "seed_verified.jsonl"
+            sft_path = Path(tmpdir) / "seed_sft.jsonl"
+            self.assertGreater(build_seed_raw(str(raw_path)), 0)
+            self.assertGreater(build_seed_verified(str(raw_path), str(verified_path)), 0)
+            self.assertGreater(build_sft_records(str(verified_path), str(sft_path)), 0)
+            self.assertTrue(sft_path.exists())
 
 
 if __name__ == "__main__":

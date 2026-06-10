@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
-from connect4.env import Board
+from connect4.env import Board, board_from_rows
 
 
 @dataclass
@@ -25,6 +25,11 @@ class RawMoveSample:
     terminal: bool
     model_path: str
     decode_config: Dict[str, Any]
+
+    def __post_init__(self) -> None:
+        self.board_before = board_from_rows(self.board_before)
+        if self.board_after is not None:
+            self.board_after = board_from_rows(self.board_after)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
