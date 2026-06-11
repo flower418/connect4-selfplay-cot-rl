@@ -150,7 +150,8 @@ bash scripts/run_verl_sft.sh
 
 ```bash
 export DEEPSEEK_MODEL=deepseek-v4-flash
-python3 seed/build_large_seed_sft.py --target-sft 10000 --batch-size 1000 --concurrency 100
+python3 seed/build_large_seed_sft.py --step candidates --oracle-games 2500
+python3 seed/build_large_seed_sft.py --step collect --target-sft 10000 --batch-size 1000 --concurrency 100
 ```
 
 ## Server Setup

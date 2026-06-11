@@ -47,13 +47,16 @@ def build_large_seed_sft(
             batch_root,
         )
 
+    print("[stage] generating candidates", flush=True)
     candidate_count = generate_seed_positions(
         candidate_output,
         oracle_games=oracle_games,
         seed=seed,
         max_prefix_len=12,
         max_total_plies=20,
+        progress_every=max(1, oracle_games // 10),
     )
+    print(f"[stage] candidates ready: {candidate_count}", flush=True)
     batch_root.mkdir(parents=True, exist_ok=True)
     raw_records = list(read_jsonl(raw_output)) if resume and Path(raw_output).exists() else []
     error_records = []
@@ -67,6 +70,10 @@ def build_large_seed_sft(
             break
         batch_raw = batch_root / f"raw_batch_{batch_index:04d}.jsonl"
         batch_errors = batch_root / f"errors_batch_{batch_index:04d}.jsonl"
+        print(
+            f"[stage] collect batch={batch_index:04d} offset={offset} size={batch_size}",
+            flush=True,
+        )
         collected = collect_seed_cot(
             input_path=candidate_output,
             output_path=str(batch_raw),
@@ -123,6 +130,123 @@ def build_large_seed_sft(
     return manifest
 
 
+def generate_large_seed_candidates(
+    candidate_output: str,
+    oracle_games: int,
+    seed: int,
+    progress_every: int,
+) -> int:
+    print("[stage] generating candidates", flush=True)
+    candidate_count = generate_seed_positions(
+        candidate_output,
+        oracle_games=oracle_games,
+        seed=seed,
+        max_prefix_len=12,
+        max_total_plies=20,
+        progress_every=progress_every,
+    )
+    print(f"[stage] candidates ready: {candidate_count}", flush=True)
+    return candidate_count
+
+
+def collect_verify_export(
+    candidate_output: str,
+    raw_output: str,
+    verified_output: str,
+    sft_output: str,
+    manifest_output: str,
+    target_sft: int,
+    batch_size: int,
+    concurrency: int,
+    max_retries: int,
+    max_tokens: int,
+    batch_dir: str,
+    resume: bool,
+) -> dict:
+    batch_root = Path(batch_dir)
+    if not resume:
+        _reset_outputs(
+            [
+                raw_output,
+                verified_output,
+                sft_output,
+                manifest_output,
+                str(Path(raw_output).with_suffix("")) + "_errors.jsonl",
+            ],
+            batch_root,
+        )
+    batch_root.mkdir(parents=True, exist_ok=True)
+    raw_records = list(read_jsonl(raw_output)) if resume and Path(raw_output).exists() else []
+    error_records = []
+    candidate_count = _line_count(candidate_output)
+    offset = len(raw_records) if resume else 0
+    batch_index = offset // batch_size
+    while True:
+        current_sft = _line_count(sft_output)
+        if current_sft >= target_sft:
+            break
+        if offset >= candidate_count:
+            break
+        batch_raw = batch_root / f"raw_batch_{batch_index:04d}.jsonl"
+        batch_errors = batch_root / f"errors_batch_{batch_index:04d}.jsonl"
+        print(
+            f"[stage] collect batch={batch_index:04d} offset={offset} size={batch_size}",
+            flush=True,
+        )
+        collected = collect_seed_cot(
+            input_path=candidate_output,
+            output_path=str(batch_raw),
+            limit=batch_size,
+            sleep_seconds=0.02,
+            concurrency=concurrency,
+            max_retries=max_retries,
+            max_tokens=max_tokens,
+            errors_output_path=str(batch_errors),
+            offset=offset,
+        )
+        raw_records.extend(read_jsonl(batch_raw))
+        if Path(batch_errors).exists():
+            error_records.extend(read_jsonl(batch_errors))
+        write_jsonl(raw_output, raw_records)
+        build_seed_verified(raw_output, verified_output)
+        build_sft_records(verified_output, sft_output)
+        offset += batch_size
+        batch_index += 1
+        print(
+            json.dumps(
+                {
+                    "batch": batch_index,
+                    "offset": offset,
+                    "collected": collected,
+                    "raw_total": len(raw_records),
+                    "sft_total": _line_count(sft_output),
+                    "target_sft": target_sft,
+                },
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+
+    manifest = {
+        "target_sft": target_sft,
+        "candidate_count": candidate_count,
+        "raw_count": _line_count(raw_output),
+        "verified_count": _line_count(verified_output),
+        "sft_count": _line_count(sft_output),
+        "error_count": len(error_records),
+        "batch_size": batch_size,
+        "concurrency": concurrency,
+        "max_retries": max_retries,
+        "max_tokens": max_tokens,
+        "batch_dir": str(batch_root),
+        "complete": _line_count(sft_output) >= target_sft,
+    }
+    write_jsonl(manifest_output, [manifest])
+    if error_records:
+        write_jsonl(str(Path(raw_output).with_suffix("")) + "_errors.jsonl", error_records)
+    return manifest
+
+
 def _reset_outputs(paths: list[str], batch_root: Path) -> None:
     for path in paths:
         p = Path(path)
@@ -156,24 +280,32 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--batch-dir", default="data/seed/seed_sft_10k_batches")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--step", choices=["all", "candidates", "collect"], default="all")
+    parser.add_argument("--progress-every", type=int, default=250)
     args = parser.parse_args()
-    manifest = build_large_seed_sft(
-        target_sft=args.target_sft,
-        candidate_output=args.candidate_output,
-        raw_output=args.raw_output,
-        verified_output=args.verified_output,
-        sft_output=args.sft_output,
-        manifest_output=args.manifest_output,
-        oracle_games=args.oracle_games,
-        batch_size=args.batch_size,
-        concurrency=args.concurrency,
-        max_retries=args.max_retries,
-        max_tokens=args.max_tokens,
-        seed=args.seed,
-        batch_dir=args.batch_dir,
-        resume=args.resume,
-    )
-    print(json.dumps(manifest, ensure_ascii=False, indent=2))
+    if args.step in {"all", "candidates"}:
+        generate_large_seed_candidates(
+            candidate_output=args.candidate_output,
+            oracle_games=args.oracle_games,
+            seed=args.seed,
+            progress_every=args.progress_every,
+        )
+    if args.step in {"all", "collect"}:
+        manifest = collect_verify_export(
+            candidate_output=args.candidate_output,
+            raw_output=args.raw_output,
+            verified_output=args.verified_output,
+            sft_output=args.sft_output,
+            manifest_output=args.manifest_output,
+            target_sft=args.target_sft,
+            batch_size=args.batch_size,
+            concurrency=args.concurrency,
+            max_retries=args.max_retries,
+            max_tokens=args.max_tokens,
+            batch_dir=args.batch_dir,
+            resume=args.resume,
+        )
+        print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import random
 import sys
+import time
 from pathlib import Path
 from typing import Dict, List
 
@@ -22,10 +23,12 @@ def generate_seed_positions(
     seed: int = 7,
     max_prefix_len: int = 8,
     max_total_plies: int = 12,
+    progress_every: int = 500,
 ) -> int:
     rng = random.Random(seed)
     positions: List[Dict] = []
     seen = set()
+    start = time.time()
 
     for template in seed_templates():
         record = _build_position_record(
@@ -35,6 +38,8 @@ def generate_seed_positions(
             player_to_move=template.player_to_move,
         )
         _append_if_new(positions, seen, record)
+    if positions:
+        write_jsonl(output_path, positions)
 
     for game_index in range(oracle_games):
         for record in _sample_oracle_game_positions(
@@ -42,8 +47,14 @@ def generate_seed_positions(
             game_index=game_index,
             max_prefix_len=max_prefix_len,
             max_total_plies=max_total_plies,
-        ):
+            ):
             _append_if_new(positions, seen, record)
+        if progress_every > 0 and (game_index + 1) % progress_every == 0:
+            write_jsonl(output_path, positions)
+            print(
+                f"[candidates] games={game_index + 1}/{oracle_games} positions={len(positions)} elapsed={time.time() - start:.1f}s",
+                flush=True,
+            )
 
     write_jsonl(output_path, positions)
     return len(positions)
@@ -164,6 +175,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--max-prefix-len", type=int, default=8)
     parser.add_argument("--max-total-plies", type=int, default=12)
+    parser.add_argument("--progress-every", type=int, default=500)
     args = parser.parse_args()
     count = generate_seed_positions(
         args.output,
@@ -171,6 +183,7 @@ def main() -> None:
         seed=args.seed,
         max_prefix_len=args.max_prefix_len,
         max_total_plies=args.max_total_plies,
+        progress_every=args.progress_every,
     )
     print(f"wrote {count} seed candidate positions to {args.output}")
 

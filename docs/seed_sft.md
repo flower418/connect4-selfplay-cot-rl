@@ -85,9 +85,9 @@ The formal large seed SFT target is 10k verified records using `deepseek-v4-flas
 ```bash
 export DEEPSEEK_MODEL=deepseek-v4-flash
 
-python3 seed/build_large_seed_sft.py \
+python3 seed/build_large_seed_sft.py --step candidates --oracle-games 2500
+python3 seed/build_large_seed_sft.py --step collect \
   --target-sft 10000 \
-  --oracle-games 2500 \
   --batch-size 1000 \
   --concurrency 100 \
   --max-tokens 1800
