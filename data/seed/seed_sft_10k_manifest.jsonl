@@ -1,0 +1,1 @@
+{"target_sft": 10000, "candidate_count": 19078, "raw_count": 10691, "verified_count": 10691, "sft_count": 10691, "error_count": 2809, "batch_size": 500, "concurrency": 50, "max_retries": 1, "max_tokens": 3200, "batch_dir": "data/seed/seed_sft_10k_batches", "complete": true}

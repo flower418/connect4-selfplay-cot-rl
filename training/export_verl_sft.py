@@ -15,13 +15,17 @@ from data_pipeline.io import read_jsonl
 def export_verl_sft(input_path: str, output_path: str) -> int:
     rows = []
     for item in read_jsonl(input_path):
+        prompt = item["prompt"]
+        response = item["response"]
         rows.append(
             {
                 "data_source": item.get("data_source", "connect4_seed_sft"),
                 "ability": item.get("ability", "connect4_reasoning"),
+                "prompt": prompt,
+                "response": response,
                 "messages": [
-                    {"role": "user", "content": item["prompt"]},
-                    {"role": "assistant", "content": item["response"]},
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": response},
                 ],
                 "extra_info": item.get("extra_info", {}),
             }

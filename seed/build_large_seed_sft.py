@@ -58,9 +58,7 @@ def build_large_seed_sft(
     )
     print(f"[stage] candidates ready: {candidate_count}", flush=True)
     batch_root.mkdir(parents=True, exist_ok=True)
-    raw_records = list(read_jsonl(raw_output)) if resume and Path(raw_output).exists() else []
-    error_records = []
-    offset = len(raw_records) if resume else 0
+    raw_records, error_records, offset = _load_resume_state(raw_output, batch_root) if resume else ([], [], 0)
     batch_index = offset // batch_size
     while True:
         current_sft = _line_count(sft_output)
@@ -176,10 +174,8 @@ def collect_verify_export(
             batch_root,
         )
     batch_root.mkdir(parents=True, exist_ok=True)
-    raw_records = list(read_jsonl(raw_output)) if resume and Path(raw_output).exists() else []
-    error_records = []
     candidate_count = _line_count(candidate_output)
-    offset = len(raw_records) if resume else 0
+    raw_records, error_records, offset = _load_resume_state(raw_output, batch_root) if resume else ([], [], 0)
     batch_index = offset // batch_size
     while True:
         current_sft = _line_count(sft_output)
@@ -256,6 +252,22 @@ def _reset_outputs(paths: list[str], batch_root: Path) -> None:
         shutil.rmtree(batch_root)
 
 
+def _load_resume_state(raw_output: str, batch_root: Path) -> tuple[list[dict], list[dict], int]:
+    raw_records = list(read_jsonl(raw_output)) if Path(raw_output).exists() else []
+    error_records = []
+    processed = 0
+    if batch_root.exists():
+        raw_batches = sorted(batch_root.glob("raw_batch_*.jsonl"))
+        error_batches = sorted(batch_root.glob("errors_batch_*.jsonl"))
+        for batch_path in raw_batches:
+            processed += _line_count(str(batch_path))
+        for batch_path in error_batches:
+            count = _line_count(str(batch_path))
+            processed += count
+            error_records.extend(read_jsonl(batch_path))
+    return raw_records, error_records, max(processed, len(raw_records))
+
+
 def _line_count(path: str) -> int:
     p = Path(path)
     if not p.exists():
@@ -275,8 +287,8 @@ def main() -> None:
     parser.add_argument("--oracle-games", type=int, default=2500)
     parser.add_argument("--batch-size", type=int, default=1000)
     parser.add_argument("--concurrency", type=int, default=100)
-    parser.add_argument("--max-retries", type=int, default=3)
-    parser.add_argument("--max-tokens", type=int, default=1800)
+    parser.add_argument("--max-retries", type=int, default=1)
+    parser.add_argument("--max-tokens", type=int, default=3200)
     parser.add_argument("--seed", type=int, default=17)
     parser.add_argument("--batch-dir", default="data/seed/seed_sft_10k_batches")
     parser.add_argument("--resume", action="store_true")

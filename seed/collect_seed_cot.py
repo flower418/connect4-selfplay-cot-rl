@@ -19,8 +19,9 @@ from seed.parse_seed_responses import parse_seed_response
 
 
 SYSTEM_PROMPT = (
-    "你是四子棋老师，任务是为一个已知正确落子生成高质量、简洁、真实的中文分析。"
+    "你是四子棋老师，任务是为一个已知正确落子生成高质量、极简、真实的中文分析。"
     "你必须严格遵守事实，不要编造不存在的直接赢、强制防守或非法列。"
+    "分析只写1到2句，总字数不超过80个中文字符；不要枚举坐标，不要展开多步变化。"
     "输出必须只有两段：\n"
     "分析：...\n"
     "最终落子列: N"
@@ -33,8 +34,8 @@ def collect_seed_cot(
     limit: int | None = None,
     sleep_seconds: float = 0.1,
     concurrency: int = 20,
-    max_retries: int = 3,
-    max_tokens: int = 2200,
+    max_retries: int = 1,
+    max_tokens: int = 3200,
     errors_output_path: str | None = None,
     offset: int = 0,
 ) -> int:
@@ -98,13 +99,14 @@ def _collect_one(
             )
             choice = response["choices"][0]
             finish_reason = choice.get("finish_reason")
-            message = response["choices"][0]["message"]["content"]
+            response_message = response["choices"][0]["message"]
+            message = response_message.get("content") or response_message.get("reasoning_content") or ""
             parsed_cot, parsed_action = parse_seed_response(message)
-            if finish_reason == "length":
-                raise RuntimeError("DeepSeek response was truncated")
             if not message.strip():
                 raise RuntimeError("DeepSeek returned empty content")
             if parsed_action != target_move:
+                if finish_reason == "length":
+                    raise RuntimeError("DeepSeek response was truncated before final action")
                 raise RuntimeError(f"parsed action {parsed_action} did not match target {target_move}")
             board = tuple(tuple(r) for r in row["board"])
             legal = legal_moves(board)
@@ -157,12 +159,12 @@ def _build_teacher_prompt(row: Dict) -> str:
     tactical = "、".join(row["tactical_tags"]) if row["tactical_tags"] else "无显式立即战术标签"
     return (
         f"{build_position_prompt(tuple(tuple(r) for r in row['board']), row['player_to_move'])}\n\n"
-        "请围绕一个已知正确落子写分析，不要改动最终动作。\n"
+        "请围绕一个已知正确落子写极简分析，不要改动最终动作。\n"
         f"已知正确落子列: {move}\n"
         f"程序战术标签: {tactical}\n"
         "要求：\n"
-        "1. 分析必须与局面事实一致。\n"
-        "2. 分析必须支持最终动作。\n"
+        "1. 分析只写1到2句，总字数不超过80个中文字符。\n"
+        "2. 不要枚举坐标，不要展开多步变化，不要写长篇推理。\n"
         "3. 不要提不存在的直接赢、必须防守或非法规则。\n"
         f"4. 最终必须输出：最终落子列: {move}\n"
     )
@@ -186,8 +188,8 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--sleep-seconds", type=float, default=0.1)
     parser.add_argument("--concurrency", type=int, default=20)
-    parser.add_argument("--max-retries", type=int, default=3)
-    parser.add_argument("--max-tokens", type=int, default=2200)
+    parser.add_argument("--max-retries", type=int, default=1)
+    parser.add_argument("--max-tokens", type=int, default=3200)
     parser.add_argument("--errors-output", default="data/seed/seed_positions_errors.jsonl")
     parser.add_argument("--offset", type=int, default=0)
     args = parser.parse_args()

@@ -7,3 +7,4 @@ __pycache__/
 models/
 outputs/
 wandb/
+data/train/seed_sft_verl.parquet
