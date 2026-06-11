@@ -16,6 +16,8 @@ from seed.build_seed_verified import build_seed_verified
 from seed.generate_seed_positions import generate_seed_positions
 from seed.parse_seed_responses import parse_seed_response
 from training.build_sft import build_sft_records
+from connect4.strong_oracle import solve_position
+from evaluation.evaluate_baselines import evaluate_baselines, summarize_results
 
 
 class Connect4EnvTest(unittest.TestCase):
@@ -145,6 +147,49 @@ class Connect4EnvTest(unittest.TestCase):
         analysis, action = parse_seed_response(text)
         self.assertIn("占中路", analysis)
         self.assertEqual(action, 3)
+
+    def test_strong_oracle_solves_late_position(self):
+        board = new_board()
+        player = PLAYER_ONE
+        for move in [0, 4, 1, 5, 2]:
+            board = apply_move(board, player, move)
+            player = -player
+        evaluation = solve_position(board, PLAYER_ONE, max_empty=37)
+        self.assertTrue(evaluation.solved)
+        self.assertIn(3, evaluation.best_moves)
+
+    def test_baseline_summary_on_one_exact_record(self):
+        import tempfile
+        from pathlib import Path
+        from data_pipeline.io import write_jsonl
+
+        board = new_board()
+        player = PLAYER_ONE
+        for move in [0, 4, 1, 5, 2]:
+            board = apply_move(board, player, move)
+            player = -player
+        strong = solve_position(board, PLAYER_ONE, max_empty=37)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            eval_path = Path(tmpdir) / "eval.jsonl"
+            results_path = Path(tmpdir) / "results.jsonl"
+            write_jsonl(
+                eval_path,
+                [
+                    {
+                        "eval_id": "unit",
+                        "split": "late_immediate_win",
+                        "board": board,
+                        "player_to_move": PLAYER_ONE,
+                        "legal_moves": legal_moves(board),
+                        "oracle_value": strong.value,
+                        "oracle_best_moves": strong.best_moves,
+                        "oracle_move_values": strong.move_values,
+                    }
+                ],
+            )
+            self.assertGreater(evaluate_baselines(str(eval_path), str(results_path)), 0)
+            summary = summarize_results(str(results_path))
+            self.assertTrue(any(key.startswith("minimax_depth4::") for key in summary))
 
 
 if __name__ == "__main__":

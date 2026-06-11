@@ -80,6 +80,7 @@ python3 training/build_sft.py \
 - run first SFT training against `data/train/seed_sft.jsonl`
 - add self-play sample generator
 - add verl GRPO reward integration
+- freeze benchmark evaluation before comparing trained models
 
 ## Repository layout
 
@@ -92,6 +93,7 @@ seed/            cold-start seed collection pipeline
 tests/           unit tests
 training/        dataset exporters for SFT / GRPO
 verification/    rule-based cleaning and labeling
+evaluation/      frozen benchmark and rule baselines
 ```
 
 ## Local-only files
@@ -121,3 +123,15 @@ data/
 ## Source document
 
 The initial project specification is tracked in `docs/project_spec.md`.
+
+## Evaluation
+
+The benchmark protocol is documented in `docs/evaluation.md`.
+
+Current commands:
+
+```bash
+python3 evaluation/build_frozen_benchmark.py --target-per-split 120 --max-empty 14
+python3 evaluation/evaluate_baselines.py
+python3 evaluation/evaluate_hf_model.py --model Qwen/Qwen2.5-0.5B-Instruct
+```
