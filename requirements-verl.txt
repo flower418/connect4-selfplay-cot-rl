@@ -8,3 +8,4 @@
 #
 # If your cluster uses a pinned verl fork, install that fork instead.
 verl
+uvicorn

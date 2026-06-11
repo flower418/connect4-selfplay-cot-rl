@@ -145,7 +145,7 @@ python3 training/export_verl_sft.py \
 然后调用：
 
 ```bash
-python3 -m verl.trainer.fsdp_sft_trainer
+python3 -m verl.trainer.sft_trainer
 ```
 
 ### 可调参数
@@ -160,8 +160,12 @@ export OUTPUT_DIR=outputs/seed_sft_qwen25_05b
 export PROJECT_NAME=connect4-cot-rl
 export EXPERIMENT_NAME=seed-sft-qwen25-05b
 export TOTAL_EPOCHS=3
+export TRAIN_BATCH_SIZE=8
 export MICRO_BATCH_SIZE=1
 export MAX_LENGTH=2048
+export N_GPUS_PER_NODE=1
+export SAVE_FREQ=-1
+export TEST_FREQ=after_each_epoch
 export LR=1e-5
 export LOGGER='["console","wandb"]'
 
@@ -194,7 +198,7 @@ pip install -r requirements.txt
 pip install -r requirements-verl.txt
 ```
 
-如果 verl 版本的 SFT 入口不是 `verl.trainer.fsdp_sft_trainer`，只需要改 `scripts/run_verl_sft.sh` 里的模块名，数据导出部分不需要改。
+当前脚本适配 `verl==0.8.x` 的入口 `verl.trainer.sft_trainer`。如果后续 verl 版本调整入口，只需要改 `scripts/run_verl_sft.sh` 里的模块名和 Hydra 字段，数据导出部分不需要改。
 
 ## 目录约定
 
