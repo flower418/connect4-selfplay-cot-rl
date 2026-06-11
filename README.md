@@ -199,11 +199,7 @@ pip install -r requirements.txt
 pip install -r requirements-verl.txt
 ```
 
-如果 `flash-attn` 安装失败，优先使用当前 torch/CUDA 环境编译：
-
-```bash
-pip install flash-attn --no-build-isolation
-```
+默认训练直接使用 `sdpa`，不依赖 `flash-attn` 也能先跑起来。若后续需要更高吞吐，再单独评估是否安装 `flash-attn`。
 
 当前脚本适配 `verl==0.8.x` 的入口 `verl.trainer.sft_trainer`。如果后续 verl 版本调整入口，只需要改 `scripts/run_verl_sft.sh` 里的模块名和 Hydra 字段，数据导出部分不需要改。
 

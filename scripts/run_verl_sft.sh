@@ -17,6 +17,7 @@ N_GPUS_PER_NODE="${N_GPUS_PER_NODE:-1}"
 NNODES="${NNODES:-1}"
 SAVE_FREQ="${SAVE_FREQ:--1}"
 TEST_FREQ="${TEST_FREQ:-after_each_epoch}"
+ATTN_IMPLEMENTATION="${ATTN_IMPLEMENTATION:-sdpa}"
 
 python3 training/export_verl_sft.py \
   --input "${SFT_INPUT}" \
@@ -34,6 +35,7 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   data.max_length="${MAX_LENGTH}" \
   data.messages_key=messages \
   model.path="${MODEL_PATH}" \
+  model.attn_implementation="${ATTN_IMPLEMENTATION}" \
   trainer.default_local_dir="${OUTPUT_DIR}" \
   trainer.project_name="${PROJECT_NAME}" \
   trainer.experiment_name="${EXPERIMENT_NAME}" \
