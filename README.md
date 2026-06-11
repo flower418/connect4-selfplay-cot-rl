@@ -39,16 +39,41 @@ The first implementation target is the data pipeline:
 - export seed SFT training set for `Qwen2.5-0.5B-Instruct`
 - add response parser and self-play sample generator
 
-## Planned repository layout
+## Repository layout
 
 ```text
-connect4/
-generation/
-verification/
-training/
-evaluation/
-docs/
+connect4/        game rules and oracle
+data/            generated datasets and exports
+data_pipeline/   schemas, IO, prompt helpers
+docs/            project notes and pipeline docs
+seed/            cold-start seed collection pipeline
+tests/           unit tests
+training/        dataset exporters for SFT / GRPO
+verification/    rule-based cleaning and labeling
+```
+
+## Local-only files
+
+These stay untracked:
+
+```text
+.env.local
+__pycache__/
+.pytest_cache/
+```
+
+## Generated data
+
+Current generated artifacts live under:
+
+```text
 data/
+  seed/
+    seed_positions_candidates.jsonl
+    seed_positions_raw.jsonl
+    seed_positions_verified.jsonl
+  train/
+    seed_sft.jsonl
 ```
 
 ## Source document

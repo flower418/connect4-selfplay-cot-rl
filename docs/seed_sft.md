@@ -55,3 +55,26 @@ Expected variables:
 DEEPSEEK_API_KEY=...
 DEEPSEEK_MODEL=deepseek-v4-pro
 ```
+
+## 2026-06-11 collection note
+
+The first large DeepSeek-backed seed run exposed two pipeline bugs:
+
+- `deepseek-v4-pro` often spends many completion tokens in `reasoning_content`; `max_tokens=700` caused `finish_reason=length`, empty or incomplete `content`, and many false `illegal` samples.
+- The batch collector aborted the whole run when one sample failed, losing successful samples.
+
+Fixes:
+
+- default collection token budget increased to `2200`, with retry attempts adding more tokens
+- truncated, empty, or target-mismatched responses are treated as failed samples
+- batch collection now writes successful samples and records failures separately
+- parser accepts several equivalent final-move phrasings
+
+Current generated set:
+
+- candidates: 546
+- raw DeepSeek samples: 217
+- collection errors: 3
+- verified samples: 217
+- SFT records: 217
+- verified move quality: all `best`
