@@ -36,6 +36,7 @@ def build_frozen_benchmark(
     max_candidates: int = 1_000_000,
     progress_every: int = 1000,
     train_paths: Iterable[str] = ("data/seed/seed_positions_verified.jsonl",),
+    checkpoint_every: int = 25,
 ) -> dict:
     rng = random.Random(seed)
     train_ids = _load_train_canonical_ids(train_paths)
@@ -43,11 +44,13 @@ def build_frozen_benchmark(
     records: List[Dict] = []
     split_counts = Counter()
     candidate_count = 0
+    accepted_since_checkpoint = 0
 
     while min((split_counts[name] for name in SPLITS), default=0) < target_per_split and candidate_count < max_candidates:
         candidate_count += 1
         if progress_every > 0 and candidate_count % progress_every == 0:
             _print_progress(candidate_count, split_counts, target_per_split)
+            _write_checkpoint(output_path, manifest_path, records, seed, target_per_split, max_empty, max_candidates, candidate_count, split_counts, train_ids)
         board, player = _sample_late_position(rng, max_empty=max_empty)
         canonical_id = canonical_position_id(board, player)
         if canonical_id in seen:
@@ -62,9 +65,41 @@ def build_frozen_benchmark(
         seen.add(canonical_id)
         split_counts[split] += 1
         records.append(_record(f"{split}_{split_counts[split]:04d}", split, board, player, strong, max_empty))
+        accepted_since_checkpoint += 1
+        if checkpoint_every > 0 and accepted_since_checkpoint >= checkpoint_every:
+            _write_checkpoint(output_path, manifest_path, records, seed, target_per_split, max_empty, max_candidates, candidate_count, split_counts, train_ids)
+            accepted_since_checkpoint = 0
         if progress_every > 0 and split_counts[split] % 50 == 0:
             _print_progress(candidate_count, split_counts, target_per_split)
 
+    _write_checkpoint(output_path, manifest_path, records, seed, target_per_split, max_empty, max_candidates, candidate_count, split_counts, train_ids)
+    return {
+        "seed": seed,
+        "target_per_split": target_per_split,
+        "max_empty": max_empty,
+        "max_candidates": max_candidates,
+        "candidate_count": candidate_count,
+        "total_records": len(records),
+        "split_counts": dict(split_counts),
+        "train_canonical_ids_excluded": len(train_ids),
+        "oracle": "exact_negamax_alpha_beta_transposition",
+        "complete": all(split_counts[name] >= target_per_split for name in SPLITS),
+        "acceptance": "only exact-solved positions",
+    }
+
+
+def _write_checkpoint(
+    output_path: str,
+    manifest_path: str,
+    records: List[Dict],
+    seed: int,
+    target_per_split: int,
+    max_empty: int,
+    max_candidates: int,
+    candidate_count: int,
+    split_counts: Counter,
+    train_ids: set[str],
+) -> None:
     write_jsonl(output_path, records)
     manifest = {
         "seed": seed,
@@ -80,7 +115,6 @@ def build_frozen_benchmark(
         "acceptance": "only exact-solved positions",
     }
     write_jsonl(manifest_path, [manifest])
-    return manifest
 
 
 def _load_train_canonical_ids(paths: Iterable[str]) -> set[str]:
@@ -132,23 +166,28 @@ def _sample_rollout_move(rng: random.Random, board: Board, player: int, ply: int
 
 def _assign_split(board: Board, player: int, strong) -> str | None:
     shallow = evaluate_position(board, player, depth=2)
+    deep = evaluate_position(board, player, depth=4)
     if shallow.immediate_win_moves:
         return "late_immediate_win"
     if shallow.must_block_moves:
         return "late_must_block"
-    values = list(strong.move_values.values())
-    if not values:
+    exact_values = list(strong.move_values.values())
+    if not exact_values:
         return None
-    best = max(values)
-    worst = min(values)
-    regret_span = best - worst
+    exact_best = max(exact_values)
+    exact_worst = min(exact_values)
+    exact_regret_span = exact_best - exact_worst
     if not set(shallow.best_moves).intersection(strong.best_moves):
         return "late_depth_gap"
-    if strong.value == 1.0 and regret_span >= 1.0:
+    if strong.value == 1.0 and exact_regret_span >= 1.0:
         return "late_forced_win"
-    if strong.value == 0.0 and regret_span >= 1.0:
+    if strong.value == 0.0 and exact_regret_span >= 1.0:
         return "late_forced_draw"
-    if regret_span >= 1.0:
+    deep_values = list(deep.move_values.values())
+    if not deep_values:
+        return None
+    deep_regret_span = max(deep_values) - min(deep_values)
+    if set(deep.best_moves).intersection(strong.best_moves) and deep_regret_span >= 20.0:
         return "late_regret_sensitive"
     return None
 
