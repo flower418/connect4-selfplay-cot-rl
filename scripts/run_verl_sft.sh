@@ -14,6 +14,7 @@ MAX_LENGTH="${MAX_LENGTH:-2048}"
 LOGGER="${LOGGER:-[\"console\",\"wandb\"]}"
 LR="${LR:-}"
 N_GPUS_PER_NODE="${N_GPUS_PER_NODE:-1}"
+NNODES="${NNODES:-1}"
 SAVE_FREQ="${SAVE_FREQ:--1}"
 TEST_FREQ="${TEST_FREQ:-after_each_epoch}"
 
@@ -22,8 +23,10 @@ python3 training/export_verl_sft.py \
   --output "${TRAIN_FILE}"
 
 # Parquet export needs pandas + pyarrow in the server environment.
-# verl 0.8.x SFT entrypoint.
-python3 -m verl.trainer.sft_trainer \
+# verl 0.8.x SFT entrypoint. torchrun is required because the trainer
+# initializes torch.distributed from env:// even for single-node training.
+torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}" \
+  -m verl.trainer.sft_trainer \
   data.train_files="${TRAIN_FILE}" \
   data.val_files="${TRAIN_FILE}" \
   data.train_batch_size="${TRAIN_BATCH_SIZE}" \

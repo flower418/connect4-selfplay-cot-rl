@@ -163,6 +163,7 @@ export TOTAL_EPOCHS=3
 export TRAIN_BATCH_SIZE=8
 export MICRO_BATCH_SIZE=1
 export MAX_LENGTH=2048
+export NNODES=1
 export N_GPUS_PER_NODE=1
 export SAVE_FREQ=-1
 export TEST_FREQ=after_each_epoch
