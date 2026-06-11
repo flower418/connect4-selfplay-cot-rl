@@ -132,7 +132,7 @@ The benchmark protocol is documented in `docs/evaluation.md`.
 Current commands:
 
 ```bash
-python3 evaluation/build_frozen_benchmark.py --target-per-split 120 --max-empty 14
+python3 evaluation/build_frozen_benchmark.py --target-per-split 500 --max-empty 14 --max-candidates 1000000
 python3 evaluation/evaluate_baselines.py
 python3 evaluation/evaluate_hf_model.py --model Qwen/Qwen2.5-0.5B-Instruct
 ```

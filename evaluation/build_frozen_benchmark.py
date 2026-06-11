@@ -18,12 +18,12 @@ from data_pipeline.io import read_jsonl, write_jsonl
 
 
 SPLITS = {
-    "late_immediate_win": 120,
-    "late_must_block": 120,
-    "late_forced_win": 120,
-    "late_forced_draw": 120,
-    "late_depth_gap": 120,
-    "late_regret_sensitive": 120,
+    "late_immediate_win": 500,
+    "late_must_block": 500,
+    "late_forced_win": 500,
+    "late_forced_draw": 500,
+    "late_depth_gap": 500,
+    "late_regret_sensitive": 500,
 }
 
 
@@ -31,9 +31,10 @@ def build_frozen_benchmark(
     output_path: str,
     manifest_path: str,
     seed: int = 20260611,
-    target_per_split: int = 120,
+    target_per_split: int = 500,
     max_empty: int = 14,
-    max_candidates: int = 200_000,
+    max_candidates: int = 1_000_000,
+    progress_every: int = 1000,
     train_paths: Iterable[str] = ("data/seed/seed_positions_verified.jsonl",),
 ) -> dict:
     rng = random.Random(seed)
@@ -45,6 +46,8 @@ def build_frozen_benchmark(
 
     while min((split_counts[name] for name in SPLITS), default=0) < target_per_split and candidate_count < max_candidates:
         candidate_count += 1
+        if progress_every > 0 and candidate_count % progress_every == 0:
+            _print_progress(candidate_count, split_counts, target_per_split)
         board, player = _sample_late_position(rng, max_empty=max_empty)
         canonical_id = canonical_position_id(board, player)
         if canonical_id in seen:
@@ -59,6 +62,8 @@ def build_frozen_benchmark(
         seen.add(canonical_id)
         split_counts[split] += 1
         records.append(_record(f"{split}_{split_counts[split]:04d}", split, board, player, strong, max_empty))
+        if progress_every > 0 and split_counts[split] % 50 == 0:
+            _print_progress(candidate_count, split_counts, target_per_split)
 
     write_jsonl(output_path, records)
     manifest = {
@@ -88,6 +93,11 @@ def _load_train_canonical_ids(paths: Iterable[str]) -> set[str]:
         except FileNotFoundError:
             continue
     return ids
+
+
+def _print_progress(candidate_count: int, split_counts: Counter, target_per_split: int) -> None:
+    parts = [f"{name}={split_counts[name]}/{target_per_split}" for name in SPLITS]
+    print(f"[benchmark] candidates={candidate_count} " + " ".join(parts), flush=True)
 
 
 def _sample_late_position(rng: random.Random, max_empty: int) -> tuple[Board, int]:
@@ -183,9 +193,10 @@ def main() -> None:
     parser.add_argument("--output", default="data/eval/frozen_benchmark.jsonl")
     parser.add_argument("--manifest", default="data/eval/frozen_benchmark_manifest.jsonl")
     parser.add_argument("--seed", type=int, default=20260611)
-    parser.add_argument("--target-per-split", type=int, default=120)
+    parser.add_argument("--target-per-split", type=int, default=500)
     parser.add_argument("--max-empty", type=int, default=14)
-    parser.add_argument("--max-candidates", type=int, default=200_000)
+    parser.add_argument("--max-candidates", type=int, default=1_000_000)
+    parser.add_argument("--progress-every", type=int, default=1000)
     args = parser.parse_args()
     manifest = build_frozen_benchmark(
         args.output,
@@ -194,6 +205,7 @@ def main() -> None:
         target_per_split=args.target_per_split,
         max_empty=args.max_empty,
         max_candidates=args.max_candidates,
+        progress_every=args.progress_every,
     )
     print(manifest)
 

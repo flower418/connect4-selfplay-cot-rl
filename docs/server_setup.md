@@ -25,9 +25,10 @@ Build the frozen benchmark once:
 
 ```bash
 python3 evaluation/build_frozen_benchmark.py \
-  --target-per-split 120 \
+  --target-per-split 500 \
   --max-empty 14 \
-  --max-candidates 200000
+  --max-candidates 1000000 \
+  --progress-every 1000
 ```
 
 Run rule baselines:
