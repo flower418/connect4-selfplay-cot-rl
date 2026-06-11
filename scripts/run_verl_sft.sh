@@ -4,6 +4,8 @@ set -euo pipefail
 MODEL_PATH="${MODEL_PATH:-./Qwen2.5-0.5B-Instruct}"
 SFT_INPUT="${SFT_INPUT:-data/train/seed_sft_10k.jsonl}"
 TRAIN_FILE="${TRAIN_FILE:-data/train/seed_sft_verl.parquet}"
+VAL_FILE="${VAL_FILE:-data/train/seed_sft_verl_val.parquet}"
+VAL_RATIO="${VAL_RATIO:-0.1}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/seed_sft_qwen25_05b}"
 PROJECT_NAME="${PROJECT_NAME:-connect4-cot-rl}"
 EXPERIMENT_NAME="${EXPERIMENT_NAME:-seed-sft-qwen25-05b}"
@@ -21,7 +23,9 @@ ATTN_IMPLEMENTATION="${ATTN_IMPLEMENTATION:-sdpa}"
 
 python3 training/export_verl_sft.py \
   --input "${SFT_INPUT}" \
-  --output "${TRAIN_FILE}"
+  --train-output "${TRAIN_FILE}" \
+  --val-output "${VAL_FILE}" \
+  --val-ratio "${VAL_RATIO}"
 
 # Parquet export needs pandas + pyarrow in the server environment.
 # verl 0.8.x SFT entrypoint. torchrun is required because the trainer
@@ -29,7 +33,7 @@ python3 training/export_verl_sft.py \
 torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}" \
   -m verl.trainer.sft_trainer \
   data.train_files="${TRAIN_FILE}" \
-  data.val_files="${TRAIN_FILE}" \
+  data.val_files="${VAL_FILE}" \
   data.train_batch_size="${TRAIN_BATCH_SIZE}" \
   data.micro_batch_size_per_gpu="${MICRO_BATCH_SIZE}" \
   data.max_length="${MAX_LENGTH}" \

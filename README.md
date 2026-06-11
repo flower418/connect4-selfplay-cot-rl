@@ -156,6 +156,8 @@ python3 -m verl.trainer.sft_trainer
 export MODEL_PATH=/root/Qwen2.5-0.5B-Instruct
 export SFT_INPUT=data/train/seed_sft_10k.jsonl
 export TRAIN_FILE=data/train/seed_sft_verl.parquet
+export VAL_FILE=data/train/seed_sft_verl_val.parquet
+export VAL_RATIO=0.1
 export OUTPUT_DIR=outputs/seed_sft_qwen25_05b
 export PROJECT_NAME=connect4-cot-rl
 export EXPERIMENT_NAME=seed-sft-qwen25-05b
@@ -175,7 +177,7 @@ bash scripts/run_verl_sft.sh
 
 ### 可视化和日志
 
-默认 `LOGGER='["console","wandb"]'`，训练指标会同时打印到控制台并上报 wandb。服务器需要提前执行 `wandb login` 或设置 `WANDB_API_KEY`。是否包含 `train loss`、`eval/validation loss` 取决于安装的 verl 版本和它的 SFT trainer 日志字段；当前脚本把 `data.val_files` 指到同一个 parquet，因此如果 trainer 支持 validation logging，会有验证侧指标，但这不是严格独立验证集。
+默认 `LOGGER='["console","wandb"]'`，训练指标会同时打印到控制台并上报 wandb。服务器需要提前执行 `wandb login` 或设置 `WANDB_API_KEY`。当前脚本会导出独立的 `VAL_FILE`，所以 wandb 里会出现真正的 `val/loss`，不再只是 train 指标。
 
 显式设置 wandb：
 
@@ -187,7 +189,7 @@ export EXPERIMENT_NAME=seed-sft-qwen25-05b
 bash scripts/run_verl_sft.sh
 ```
 
-这样训练曲线会进入 wandb。常见可看指标包括训练 loss、学习率、step、吞吐，以及 verl 版本支持的验证 loss。
+这样训练曲线会进入 wandb。常见可看指标包括训练 loss、验证 loss、学习率、step、吞吐和梯度范数。
 
 ## 服务器环境
 
