@@ -2,17 +2,59 @@
 
 Four-in-a-row self-play CoT-RL project scaffold.
 
-## Current scope
+## Data Pipeline Architecture
 
-This repository starts from the project specification in `docs/project_spec.md`.
+The first project phase is the cold-start data pipeline for `Qwen2.5-0.5B-Instruct` SFT.
 
-The first implementation target is the data pipeline:
+The design separates truth, language generation, parsing, verification, and export:
 
-- raw self-play game logging
-- verification and labeling
-- SFT dataset building
-- DPO pair building
-- eval split freezing and leakage prevention
+```text
+seed candidates
+  -> oracle labels
+  -> DeepSeek v4 Pro CoT generation
+  -> response parser
+  -> rule verifier
+  -> SFT JSONL export
+```
+
+Core rule: DeepSeek writes the reasoning text, but it does not define the correct move. The oracle supplies the target action and tactical labels; the verifier decides whether a generated sample is usable.
+
+Current cold-start artifacts:
+
+```text
+data/seed/seed_positions_candidates.jsonl   546 candidate positions
+data/seed/seed_positions_raw.jsonl          217 DeepSeek-generated raw samples
+data/seed/seed_positions_verified.jsonl     217 verified samples
+data/train/seed_sft.jsonl                   217 SFT records
+```
+
+All verified records in the current set have `move_quality=best`.
+
+## Pipeline Components
+
+```text
+connect4/env.py                  rules, legal moves, winners, canonical IDs
+connect4/oracle.py               minimax/alpha-beta oracle labels
+seed/generate_seed_positions.py  candidate position generation
+seed/collect_seed_cot.py         DeepSeek v4 Pro CoT collection
+seed/parse_seed_responses.py     final-move and analysis parser
+seed/build_seed_verified.py      raw -> verified conversion
+verification/cleaner.py          legality, move quality, faithfulness labels
+training/build_sft.py            verified -> SFT JSONL export
+```
+
+The current collection path is:
+
+```bash
+python3 seed/generate_seed_positions.py --oracle-games 80
+python3 seed/collect_seed_cot.py --limit 220 --concurrency 20 --max-tokens 3000
+python3 seed/build_seed_verified.py \
+  --input data/seed/seed_positions_raw.jsonl \
+  --output data/seed/seed_positions_verified.jsonl
+python3 training/build_sft.py \
+  --input data/seed/seed_positions_verified.jsonl \
+  --output data/train/seed_sft.jsonl
+```
 
 ## Progress
 
@@ -26,18 +68,18 @@ The first implementation target is the data pipeline:
 - implemented SFT and GRPO export builders
 - added baseline tests for rules, canonicalization, and oracle immediate-win behavior
 - defined the formal cold-start direction as `oracle truth + DeepSeek CoT + verifier + SFT`
+- collected 217 verified cold-start SFT samples with `deepseek-v4-pro`
 
 ### In progress
 
-- DeepSeek-backed seed SFT cold-start data pipeline
 - self-play raw generation pipeline
 - verl reward integration for GRPO
 
 ### Next
 
-- build seed position corpus and verified seed labels
-- export seed SFT training set for `Qwen2.5-0.5B-Instruct`
-- add response parser and self-play sample generator
+- run first SFT training against `data/train/seed_sft.jsonl`
+- add self-play sample generator
+- add verl GRPO reward integration
 
 ## Repository layout
 

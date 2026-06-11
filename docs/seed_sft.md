@@ -23,13 +23,13 @@ The formal seed pipeline is:
 
 The template-based seed builder remains only as a local fallback baseline.
 
-## Recommended near-term usage
+## Recommended usage
 
 Run:
 
 ```bash
 python3 seed/generate_seed_positions.py
-python3 seed/collect_seed_cot.py
+python3 seed/collect_seed_cot.py --limit 220 --concurrency 20 --max-tokens 3000
 python3 seed/build_seed_verified.py
 python3 training/build_sft.py \
   --input data/seed/seed_positions_verified.jsonl \
@@ -74,7 +74,6 @@ Current generated set:
 
 - candidates: 546
 - raw DeepSeek samples: 217
-- collection errors: 3
 - verified samples: 217
 - SFT records: 217
 - verified move quality: all `best`
