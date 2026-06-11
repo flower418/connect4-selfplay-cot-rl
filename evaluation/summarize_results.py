@@ -22,8 +22,7 @@ def summarize(path: str, actor_key: str) -> dict:
         counts[key]["format"] += int(row.get("format_success", True))
         counts[key]["legal"] += int(row.get("is_legal", False))
         counts[key]["best"] += int(row.get("is_oracle_best", False))
-        if row.get("value_regret") is not None:
-            regret_sum[key] += row["value_regret"]
+        regret_sum[key] += 2.0 if row.get("value_regret") is None else row["value_regret"]
     output = {}
     for key, counter in sorted(counts.items()):
         total = counter["total"]

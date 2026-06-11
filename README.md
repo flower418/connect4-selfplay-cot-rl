@@ -94,6 +94,7 @@ tests/           unit tests
 training/        dataset exporters for SFT / GRPO
 verification/    rule-based cleaning and labeling
 evaluation/      frozen benchmark and rule baselines
+scripts/         server-side run scripts
 ```
 
 ## Local-only files
@@ -135,3 +136,16 @@ python3 evaluation/build_frozen_benchmark.py --target-per-split 120 --max-empty 
 python3 evaluation/evaluate_baselines.py
 python3 evaluation/evaluate_hf_model.py --model Qwen/Qwen2.5-0.5B-Instruct
 ```
+
+## SFT With verl
+
+The SFT training path is documented in `docs/training_verl.md`.
+
+```bash
+export MODEL_PATH=/path/to/Qwen2.5-0.5B-Instruct
+bash scripts/run_verl_sft.sh
+```
+
+## Server Setup
+
+Environment setup and benchmark commands are documented in `docs/server_setup.md`.

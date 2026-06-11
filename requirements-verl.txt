@@ -1,0 +1,10 @@
+# Install verl according to your server/CUDA setup.
+# This file is intentionally small because verl installations often depend on
+# cluster-specific CUDA, FlashAttention, and vLLM versions.
+#
+# Recommended:
+#   pip install -r requirements.txt
+#   pip install verl
+#
+# If your cluster uses a pinned verl fork, install that fork instead.
+verl

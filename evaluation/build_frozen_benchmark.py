@@ -22,7 +22,7 @@ SPLITS = {
     "late_must_block": 120,
     "late_forced_win": 120,
     "late_forced_draw": 120,
-    "late_forced_loss_defense": 120,
+    "late_depth_gap": 120,
     "late_regret_sensitive": 120,
 }
 
@@ -50,7 +50,7 @@ def build_frozen_benchmark(
         if canonical_id in seen:
             continue
         try:
-            strong = solve_position(board, player, max_empty=max_empty)
+            strong = solve_position(board, player, max_empty=max_empty, full_width=True)
         except ValueError:
             continue
         split = _assign_split(board, player, strong)
@@ -132,12 +132,12 @@ def _assign_split(board: Board, player: int, strong) -> str | None:
     best = max(values)
     worst = min(values)
     regret_span = best - worst
-    if strong.value == 1.0 and regret_span >= 2.0:
+    if not set(shallow.best_moves).intersection(strong.best_moves):
+        return "late_depth_gap"
+    if strong.value == 1.0 and regret_span >= 1.0:
         return "late_forced_win"
-    if strong.value == 0.0:
+    if strong.value == 0.0 and regret_span >= 1.0:
         return "late_forced_draw"
-    if strong.value == -1.0:
-        return "late_forced_loss_defense"
     if regret_span >= 1.0:
         return "late_regret_sensitive"
     return None

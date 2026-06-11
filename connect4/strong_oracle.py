@@ -21,7 +21,7 @@ class StrongOracleEvaluation:
     nodes: int
 
 
-def solve_position(board: Board, player: int, max_empty: int = 18) -> StrongOracleEvaluation:
+def solve_position(board: Board, player: int, max_empty: int = 18, full_width: bool = False) -> StrongOracleEvaluation:
     empty = sum(cell == 0 for row in board for cell in row)
     if empty > max_empty:
         raise ValueError(f"position has {empty} empty cells; exact solve limit is {max_empty}")
@@ -34,10 +34,12 @@ def solve_position(board: Board, player: int, max_empty: int = 18) -> StrongOrac
         if winner(child) == player:
             immediate_wins.append(move)
             move_values[move] = EXACT_WIN
-    if immediate_wins:
+    if immediate_wins and not full_width:
         return StrongOracleEvaluation(sorted(immediate_wins), EXACT_WIN, move_values, True, solver.nodes)
 
     for move in moves:
+        if move in move_values:
+            continue
         child = apply_move(board, player, move)
         move_values[move] = -solver.search(child, -player, -inf, inf)
     if not move_values:

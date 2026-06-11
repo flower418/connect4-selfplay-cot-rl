@@ -43,6 +43,7 @@ def _score_action(row: dict, policy_name: str, action: int) -> dict:
     move_values = {int(k): v for k, v in row["oracle_move_values"].items()}
     best_value = row["oracle_value"]
     chosen_value = move_values.get(action)
+    value_regret = 2.0 if chosen_value is None else best_value - chosen_value
     return {
         "policy": policy_name,
         "eval_id": row["eval_id"],
@@ -52,7 +53,7 @@ def _score_action(row: dict, policy_name: str, action: int) -> dict:
         "is_oracle_best": action in row["oracle_best_moves"],
         "oracle_value": best_value,
         "chosen_value": chosen_value,
-        "value_regret": None if chosen_value is None else best_value - chosen_value,
+        "value_regret": value_regret,
     }
 
 
@@ -64,8 +65,7 @@ def summarize_results(results_path: str) -> dict:
         counts[key]["total"] += 1
         counts[key]["legal"] += int(row["is_legal"])
         counts[key]["best"] += int(row["is_oracle_best"])
-        if row["value_regret"] is not None:
-            regret_sum[key] += row["value_regret"]
+        regret_sum[key] += row["value_regret"]
     summary = {}
     for key, counter in sorted(counts.items()):
         total = counter["total"]

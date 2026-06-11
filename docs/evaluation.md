@@ -32,8 +32,14 @@ The benchmark is intentionally late-game and exact-solvable. It measures decisio
 - `late_must_block`: urgent defense against immediate opponent threats
 - `late_forced_win`: exact-solved winning states where wrong moves can lose value
 - `late_forced_draw`: exact-solved drawn states where maintaining draw matters
-- `late_forced_loss_defense`: losing states where the model should still choose best resistance
+- `late_depth_gap`: positions where shallow depth-2 search disagrees with the exact oracle
 - `late_regret_sensitive`: states with high value spread between legal moves
+
+Notes:
+
+- exact oracle is run in full-width mode for benchmark records, so every legal move has a value
+- `late_forced_loss_defense` was intentionally removed because many losing states give every legal move the same exact value and do not distinguish policies
+- `late_depth_gap` is included to measure positions where shallow search is misleading
 
 ## Metrics
 

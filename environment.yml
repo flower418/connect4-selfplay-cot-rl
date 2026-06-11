@@ -1,0 +1,17 @@
+name: connect4-cot-rl
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pytorch
+  - pytorch-cuda=12.1
+  - pandas
+  - pyarrow
+  - pip:
+      - transformers>=4.44.0
+      - accelerate>=0.33.0
+      - safetensors>=0.4.3
+      - tqdm>=4.66.0
