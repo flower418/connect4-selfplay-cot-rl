@@ -17,7 +17,7 @@ seed candidates
   -> SFT JSONL export
 ```
 
-Core rule: DeepSeek writes the reasoning text, but it does not define the correct move. The oracle supplies the target action and tactical labels; the verifier decides whether a generated sample is usable.
+Core rule: DeepSeek writes the reasoning text, but it does not define the correct move. The oracle supplies the target action and tactical labels; the verifier decides whether a generated sample is usable. Large seed generation uses `deepseek-v4-flash`.
 
 Current cold-start artifacts:
 
@@ -144,6 +144,13 @@ The SFT training path is documented in `docs/training_verl.md`.
 ```bash
 export MODEL_PATH=/path/to/Qwen2.5-0.5B-Instruct
 bash scripts/run_verl_sft.sh
+```
+
+## Regenerate 10k Seed SFT
+
+```bash
+export DEEPSEEK_MODEL=deepseek-v4-flash
+python3 seed/build_large_seed_sft.py --target-sft 10000 --batch-size 1000 --concurrency 100
 ```
 
 ## Server Setup

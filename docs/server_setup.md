@@ -70,3 +70,16 @@ Then run SFT:
 export MODEL_PATH=/path/to/Qwen2.5-0.5B-Instruct
 bash scripts/run_verl_sft.sh
 ```
+
+## Regenerate 10k Seed SFT
+
+```bash
+export DEEPSEEK_MODEL=deepseek-v4-flash
+
+python3 seed/build_large_seed_sft.py \
+  --target-sft 10000 \
+  --oracle-games 2500 \
+  --batch-size 1000 \
+  --concurrency 100 \
+  --max-tokens 1800
+```

@@ -36,24 +36,34 @@ def collect_seed_cot(
     max_retries: int = 3,
     max_tokens: int = 2200,
     errors_output_path: str | None = None,
+    offset: int = 0,
 ) -> int:
     client = DeepSeekClient(DeepSeekConfig.from_env())
-    rows = list(read_jsonl(input_path))
+    all_rows = list(read_jsonl(input_path))
+    rows = all_rows[offset:]
     if limit is not None:
         rows = rows[:limit]
 
     outputs: List[Tuple[int, Dict]] = []
     errors: List[Dict] = []
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
-        futures = [
-            executor.submit(_collect_one, client, index, row, sleep_seconds, max_retries, max_tokens)
+        futures = {
+            executor.submit(_collect_one, client, index, row, sleep_seconds, max_retries, max_tokens): (index, row)
             for index, row in enumerate(rows)
-        ]
+        }
         for future in as_completed(futures):
+            index, row = futures[future]
             try:
                 outputs.append(future.result())
             except Exception as exc:
-                errors.append({"error": str(exc)})
+                errors.append(
+                    {
+                        "index": offset + index,
+                        "position_name": row.get("position_name"),
+                        "canonical_id": row.get("canonical_id"),
+                        "error": str(exc),
+                    }
+                )
     outputs.sort(key=lambda item: item[0])
     ordered_records = [record for _, record in outputs]
     write_jsonl(output_path, ordered_records)
@@ -120,10 +130,10 @@ def _collect_one(
                 "board_after": board_after,
                 "winner": _winner_name(board_after) if board_after is not None else None,
                 "terminal": bool(board_after is not None and winner(board_after) != 0),
-                "model_path": "deepseek/deepseek-v4-pro",
+                "model_path": f"deepseek/{client.config.model}",
                 "decode_config": {
                     "provider": "deepseek",
-                    "model": "deepseek-v4-pro",
+                    "model": client.config.model,
                     "temperature": 0.2,
                     "attempt": attempt + 1,
                     "max_tokens": current_max_tokens,
@@ -179,6 +189,7 @@ def main() -> None:
     parser.add_argument("--max-retries", type=int, default=3)
     parser.add_argument("--max-tokens", type=int, default=2200)
     parser.add_argument("--errors-output", default="data/seed/seed_positions_errors.jsonl")
+    parser.add_argument("--offset", type=int, default=0)
     args = parser.parse_args()
     count = collect_seed_cot(
         args.input,
@@ -189,6 +200,7 @@ def main() -> None:
         args.max_retries,
         args.max_tokens,
         args.errors_output,
+        args.offset,
     )
     print(f"wrote {count} DeepSeek seed raw records to {args.output}")
 

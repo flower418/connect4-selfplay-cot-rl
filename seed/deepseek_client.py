@@ -11,7 +11,7 @@ from typing import Any, Dict, List
 
 
 DEFAULT_BASE_URL = "https://api.deepseek.com"
-DEFAULT_MODEL = "deepseek-v4-pro"
+DEFAULT_MODEL = "deepseek-v4-flash"
 
 
 def load_local_env(path: str | Path) -> None:

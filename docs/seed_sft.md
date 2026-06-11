@@ -16,7 +16,7 @@ The formal seed pipeline is:
 
 1. generate candidate positions
 2. compute oracle truth labels
-3. call `deepseek-v4-pro` for chain-of-thought generation
+3. call `deepseek-v4-flash` for chain-of-thought generation
 4. parse model output into `analysis + final column`
 5. verify legality / oracle quality / tactical claims
 6. export clean SFT records
@@ -53,7 +53,7 @@ Expected variables:
 
 ```bash
 DEEPSEEK_API_KEY=...
-DEEPSEEK_MODEL=deepseek-v4-pro
+DEEPSEEK_MODEL=deepseek-v4-flash
 ```
 
 ## 2026-06-11 collection note
@@ -77,3 +77,28 @@ Current generated set:
 - verified samples: 217
 - SFT records: 217
 - verified move quality: all `best`
+
+## 10k generation
+
+The formal large seed SFT target is 10k verified records using `deepseek-v4-flash`.
+
+```bash
+export DEEPSEEK_MODEL=deepseek-v4-flash
+
+python3 seed/build_large_seed_sft.py \
+  --target-sft 10000 \
+  --oracle-games 2500 \
+  --batch-size 1000 \
+  --concurrency 100 \
+  --max-tokens 1800
+```
+
+Outputs:
+
+```text
+data/seed/seed_positions_candidates_10k.jsonl
+data/seed/seed_positions_raw_10k.jsonl
+data/seed/seed_positions_verified_10k.jsonl
+data/train/seed_sft_10k.jsonl
+data/seed/seed_sft_10k_manifest.jsonl
+```

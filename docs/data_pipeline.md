@@ -19,7 +19,7 @@
 - eval split freezer
 - full `verl` reward function and rollout integration
 - full faithfulness metric beyond `v1`
-- DeepSeek-backed formal seed collection was selected and is being implemented with `deepseek-v4-pro`
+- DeepSeek-backed formal seed collection uses `deepseek-v4-flash`
 
 ## Training route
 
