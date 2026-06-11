@@ -168,7 +168,8 @@ export MAX_LENGTH=2048
 export NNODES=1
 export N_GPUS_PER_NODE=1
 export SAVE_FREQ=-1
-export TEST_FREQ=after_each_epoch
+export TEST_FREQ=50
+export MAX_CKPT_TO_KEEP=1
 export LR=1e-5
 export LOGGER='["console","wandb"]'
 
@@ -190,6 +191,8 @@ bash scripts/run_verl_sft.sh
 ```
 
 这样训练曲线会进入 wandb。常见可看指标包括训练 loss、验证 loss、学习率、step、吞吐和梯度范数。
+
+checkpoint 默认保存在 `outputs/seed_sft_qwen25_05b/global_step_*`，`MAX_CKPT_TO_KEEP=1` 时默认只保留最近一个。
 
 ## 服务器环境
 

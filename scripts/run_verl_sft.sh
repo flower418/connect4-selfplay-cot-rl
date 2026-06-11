@@ -18,7 +18,8 @@ LR="${LR:-}"
 N_GPUS_PER_NODE="${N_GPUS_PER_NODE:-1}"
 NNODES="${NNODES:-1}"
 SAVE_FREQ="${SAVE_FREQ:--1}"
-TEST_FREQ="${TEST_FREQ:-after_each_epoch}"
+TEST_FREQ="${TEST_FREQ:-50}"
+MAX_CKPT_TO_KEEP="${MAX_CKPT_TO_KEEP:-1}"
 ATTN_IMPLEMENTATION="${ATTN_IMPLEMENTATION:-sdpa}"
 
 python3 training/export_verl_sft.py \
@@ -47,5 +48,6 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   trainer.n_gpus_per_node="${N_GPUS_PER_NODE}" \
   trainer.save_freq="${SAVE_FREQ}" \
   trainer.test_freq="${TEST_FREQ}" \
+  trainer.max_ckpt_to_keep="${MAX_CKPT_TO_KEEP}" \
   trainer.logger="${LOGGER}" \
   ${LR:+optim.lr="${LR}"}
