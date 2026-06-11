@@ -10,3 +10,4 @@
 verl
 uvicorn
 fastapi
+flash-attn
