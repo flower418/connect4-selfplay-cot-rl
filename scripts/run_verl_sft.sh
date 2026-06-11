@@ -35,7 +35,7 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   data.max_length="${MAX_LENGTH}" \
   data.messages_key=messages \
   model.path="${MODEL_PATH}" \
-  +model.attn_implementation="${ATTN_IMPLEMENTATION}" \
+  +model.override_config.attn_implementation="${ATTN_IMPLEMENTATION}" \
   trainer.default_local_dir="${OUTPUT_DIR}" \
   trainer.project_name="${PROJECT_NAME}" \
   trainer.experiment_name="${EXPERIMENT_NAME}" \
