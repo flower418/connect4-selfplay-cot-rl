@@ -1,63 +1,83 @@
 # connect4-selfplay-cot-rl
 
-四子棋自博弈 CoT-RL 项目。当前第一阶段已经完成：用强规则 oracle 生成标签，用 DeepSeek 生成中文推理，再经过程序校验导出冷启动 SFT 数据。
+四子棋自博弈 CoT-RL 项目。目标是验证小模型在程序化规则、oracle 标注、过程监督和后续自博弈迭代下，是否能提升未见局面的单步决策能力和 CoT/action 一致性。
 
-## 当前状态
+## 当前进度
 
-第一阶段 SFT 数据已经完成：
+已完成：
 
-```text
-data/seed/seed_positions_candidates_10k.jsonl      19078 个候选局面
-data/seed/seed_positions_raw_10k.jsonl             10691 条 DeepSeek 原始样本
-data/seed/seed_positions_raw_10k_errors.jsonl       2809 条失败记录
-data/seed/seed_positions_verified_10k.jsonl        10691 条验证通过样本
-data/train/seed_sft_10k.jsonl                      10691 条最终 SFT 样本
-data/seed/seed_sft_10k_manifest.jsonl                  1 条数据生成 manifest
-```
+- 四子棋环境、合法动作、胜负判断、镜像 canonical id
+- 深度受限 minimax oracle 和 late-game exact oracle
+- Seed 数据管线：候选局面 -> DeepSeek 中文 CoT -> 解析 -> verifier -> SFT JSONL
+- `seed_sft_10k` 数据集
+- verl SFT 数据导出和训练脚本
+- Seed SFT 训练
+- frozen benchmark / rule baseline / HF 模型评估脚本
 
-所有 `seed_sft_10k` 样本的 `move_quality` 都是 `best`。采集过程中的 batch 断点目录已经清理；最终训练、复现和审计所需文件保留在 `data/seed/` 和 `data/train/`。
+待做：
 
-## 数据管线架构
+- Seed SFT checkpoint 的 frozen benchmark 评估结果归档
+- self-play generation runner
+- RS-SFT 代际数据过滤和再训练
+- verl GRPO reward / rollout 接入
 
-数据管线把“正确答案”和“自然语言推理”分开：
+## 完整链路
 
 ```text
 候选局面生成
-  -> 程序 oracle 标注正确落子
-  -> DeepSeek 只负责生成中文分析和最终落子格式
+  -> 本地 oracle 标注 best move
+  -> DeepSeek 生成中文分析和最终落子格式
   -> 解析模型回复
-  -> 规则校验和 oracle 校验
-  -> 导出 SFT JSONL
-  -> 导出 verl Parquet
+  -> 规则校验、oracle 校验、faithfulness v1
+  -> 导出 Seed SFT JSONL
+  -> 导出 verl train/val parquet
+  -> verl Seed SFT
+  -> frozen benchmark 评估
+  -> self-play 生成新数据
+  -> verifier 过滤高质量样本
+  -> RS-SFT 下一代
+  -> 可选 GRPO
 ```
 
 核心原则：
 
-- 正确动作不由 DeepSeek 决定，而由本地 oracle 给出。
-- DeepSeek 只生成训练用的中文分析文本。
-- 样本必须通过解析、合法性、oracle 最优动作和基本忠实性校验后才进入 SFT。
-- API 采集默认不重试，避免失败样本重复消耗 token。
-- `verified` 数据保留 oracle 标签，后续做 RL reward 校验和数据审计时仍然有用。
+- 正确动作由本地 oracle 给出，不由 DeepSeek 决定。
+- DeepSeek 只负责生成 cold-start 阶段的中文推理文本。
+- 进入训练集的样本必须可解析、合法，并命中 oracle best/good move。
+- `verified` 数据保留 oracle 标签，后续可复用到评估、RL reward 和数据审计。
+
+## 数据状态
+
+```text
+data/seed/seed_positions_candidates_10k.jsonl      19078 candidates
+data/seed/seed_positions_raw_10k.jsonl             10691 raw DeepSeek samples
+data/seed/seed_positions_raw_10k_errors.jsonl       2809 failed calls
+data/seed/seed_positions_verified_10k.jsonl        10691 verified samples
+data/train/seed_sft_10k.jsonl                      10691 final SFT samples
+data/seed/seed_sft_10k_manifest.jsonl                  1 manifest
+```
 
 ## 关键模块
 
 ```text
-connect4/env.py                  四子棋规则、合法动作、胜负判断、canonical id
-connect4/oracle.py               深度受限 minimax oracle，用于 seed 过滤和 baseline
-connect4/strong_oracle.py        exact solver，用于 frozen benchmark 真值
-seed/generate_seed_positions.py  生成候选局面
-seed/collect_seed_cot.py         调 DeepSeek 生成中文 CoT 样本
+connect4/env.py                  Connect4 rules and canonical ids
+connect4/oracle.py               depth-limited minimax oracle
+connect4/strong_oracle.py        exact late-game solver
+seed/generate_seed_positions.py  seed candidate generation
+seed/collect_seed_cot.py         DeepSeek CoT collection
 seed/build_seed_verified.py      raw -> verified
-seed/build_large_seed_sft.py     10k 级 seed SFT 一键管线
+seed/build_large_seed_sft.py     10k seed pipeline
+verification/cleaner.py          verifier and faithfulness v1
 training/build_sft.py            verified -> SFT JSONL
 training/export_verl_sft.py      SFT JSONL -> verl parquet/jsonl
-evaluation/                      frozen benchmark 和 rule baselines
-scripts/run_verl_sft.sh          verl SFT 启动脚本
+training/build_grpo.py           GRPO prompt export scaffold
+evaluation/                      benchmark, baselines, model eval
+scripts/run_verl_sft.sh          verl SFT entrypoint
 ```
 
-## 重新生成 SFT 数据
+## Seed 数据管线
 
-已有 `seed_sft_10k` 数据时不需要重新跑这一段。只有在要扩充数据时才执行。
+已有 `seed_sft_10k` 时不需要重跑。扩充或复现时使用：
 
 ```bash
 export DEEPSEEK_MODEL=deepseek-v4-flash
@@ -73,28 +93,53 @@ python3 seed/build_large_seed_sft.py --step collect \
   --resume
 ```
 
-如果只想补少量数据，降低 batch 和并发：
+## verl Seed SFT
+
+训练入口：
 
 ```bash
-python3 seed/build_large_seed_sft.py --step collect \
-  --target-sft 12000 \
-  --batch-size 500 \
-  --concurrency 50 \
-  --max-tokens 3200 \
-  --max-retries 1 \
-  --resume
+export MODEL_PATH=/root/Qwen2.5-0.5B-Instruct
+bash scripts/run_verl_sft.sh
 ```
 
-## Benchmark
+脚本会先导出 train/val parquet：
 
-Benchmark 测的是固定局面的单步决策能力，不是完整对局胜率。它用 exact oracle 作为真值，主要指标是：
+```bash
+python3 training/export_verl_sft.py \
+  --input data/train/seed_sft_10k.jsonl \
+  --train-output data/train/seed_sft_verl.parquet \
+  --val-output data/train/seed_sft_verl_val.parquet \
+  --val-ratio 0.1
+```
 
-- `format_success_rate`: 是否能解析出最终落子
-- `legal_rate`: 落子是否合法
-- `oracle_best_acc`: 是否命中 exact oracle 最优动作
-- `mean_value_regret`: 动作价值相对最优动作损失多少
+然后调用：
 
-构建 benchmark：
+```bash
+torchrun --standalone \
+  -m verl.trainer.sft_trainer \
+  data.train_files=data/train/seed_sft_verl.parquet \
+  data.val_files=data/train/seed_sft_verl_val.parquet \
+  data.messages_key=messages
+```
+
+常用参数：
+
+```bash
+export SFT_INPUT=data/train/seed_sft_10k.jsonl
+export OUTPUT_DIR=outputs/seed_sft_qwen25_05b
+export TOTAL_EPOCHS=3
+export TRAIN_BATCH_SIZE=8
+export MICRO_BATCH_SIZE=1
+export MAX_LENGTH=4096
+export TEST_FREQ=25
+export SAVE_FREQ=-1
+export MAX_CKPT_TO_KEEP=1
+export LOGGER='["console","wandb"]'
+```
+
+## 评估
+
+构建 frozen benchmark：
 
 ```bash
 python3 evaluation/build_frozen_benchmark.py \
@@ -112,11 +157,11 @@ python3 evaluation/evaluate_baselines.py \
   --output data/metrics/baseline_results.jsonl
 ```
 
-测 Hugging Face 模型：
+评估 base 或 SFT checkpoint：
 
 ```bash
 python3 evaluation/evaluate_hf_model.py \
-  --model /path/to/Qwen2.5-0.5B-Instruct-or-sft \
+  --model /path/to/model-or-sft-checkpoint \
   --input data/eval/frozen_benchmark.jsonl \
   --output data/metrics/model_results.jsonl
 
@@ -125,78 +170,14 @@ python3 evaluation/summarize_results.py \
   --actor-key model
 ```
 
-## verl SFT
+核心指标：
 
-训练入口已经接到 `seed_sft_10k`：
+- `format_success_rate`
+- `legal_rate`
+- `oracle_best_acc`
+- `mean_value_regret`
 
-```bash
-export MODEL_PATH=/root/Qwen2.5-0.5B-Instruct
-bash scripts/run_verl_sft.sh
-```
-
-脚本会先执行：
-
-```bash
-python3 training/export_verl_sft.py \
-  --input data/train/seed_sft_10k.jsonl \
-  --output data/train/seed_sft_verl.parquet
-```
-
-然后调用：
-
-```bash
-python3 -m verl.trainer.sft_trainer
-```
-
-### 可调参数
-
-`scripts/run_verl_sft.sh` 暴露这些环境变量：
-
-```bash
-export MODEL_PATH=/root/Qwen2.5-0.5B-Instruct
-export SFT_INPUT=data/train/seed_sft_10k.jsonl
-export TRAIN_FILE=data/train/seed_sft_verl.parquet
-export VAL_FILE=data/train/seed_sft_verl_val.parquet
-export VAL_RATIO=0.1
-export OUTPUT_DIR=outputs/seed_sft_qwen25_05b
-export PROJECT_NAME=connect4-cot-rl
-export EXPERIMENT_NAME=seed-sft-qwen25-05b
-export TOTAL_EPOCHS=3
-export TRAIN_BATCH_SIZE=8
-export MICRO_BATCH_SIZE=1
-export MAX_LENGTH=2048
-export NNODES=1
-export N_GPUS_PER_NODE=1
-export SAVE_FREQ=-1
-export TEST_FREQ=25
-export MAX_CKPT_TO_KEEP=1
-export LR=1e-5
-export LOGGER='["console","wandb"]'
-
-bash scripts/run_verl_sft.sh
-```
-
-### 可视化和日志
-
-默认 `LOGGER='["console","wandb"]'`，训练指标会同时打印到控制台并上报 wandb。服务器需要提前执行 `wandb login` 或设置 `WANDB_API_KEY`。当前脚本会导出独立的 `VAL_FILE`，所以 wandb 里会出现真正的 `val/loss`，不再只是 train 指标。
-
-显式设置 wandb：
-
-```bash
-export WANDB_API_KEY=...
-export LOGGER='["console","wandb"]'
-export PROJECT_NAME=connect4-cot-rl
-export EXPERIMENT_NAME=seed-sft-qwen25-05b
-bash scripts/run_verl_sft.sh
-```
-
-这样训练曲线会进入 wandb。常见可看指标包括训练 loss、验证 loss、学习率、step、吞吐和梯度范数。
-
-checkpoint 默认保存在 `outputs/seed_sft_qwen25_05b/global_step_*`，`MAX_CKPT_TO_KEEP=1` 时默认只保留最近一个。
-
-## 服务器环境
-
-服务器上建议：
+## 环境
 
 ```bash
 conda activate connect4-cot-rl
@@ -204,13 +185,11 @@ pip install -r requirements.txt
 pip install -r requirements-verl.txt
 ```
 
-默认训练直接使用 `sdpa`，不依赖 `flash-attn` 也能先跑起来。若后续需要更高吞吐，再单独评估是否安装 `flash-attn`。
+默认使用 `sdpa` attention，不强依赖 `flash-attn`。当前脚本适配 `verl==0.8.x` 的 `verl.trainer.sft_trainer`。
 
-当前脚本适配 `verl==0.8.x` 的入口 `verl.trainer.sft_trainer`。如果后续 verl 版本调整入口，只需要改 `scripts/run_verl_sft.sh` 里的模块名和 Hydra 字段，数据导出部分不需要改。
+## 仓库约定
 
-## 目录约定
-
-保留：
+保留并提交：
 
 ```text
 data/seed/seed_positions_candidates_10k.jsonl
@@ -221,17 +200,13 @@ data/seed/seed_sft_10k_manifest.jsonl
 data/train/seed_sft_10k.jsonl
 ```
 
-可重新生成，不建议提交：
+不提交：
 
 ```text
 data/train/seed_sft_verl.parquet
+data/train/seed_sft_verl_val.parquet
 outputs/
 wandb/
-```
-
-本地私密文件不提交：
-
-```text
 .env.local
 models/
 ```
