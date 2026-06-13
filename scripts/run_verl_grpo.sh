@@ -51,7 +51,7 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   trainer.n_gpus_per_node="${N_GPUS_PER_NODE}" \
   trainer.save_freq="${SAVE_FREQ}" \
   trainer.test_freq="${TEST_FREQ}" \
-  trainer.max_ckpt_to_keep="${MAX_CKPT_TO_KEEP}" \
+  +trainer.max_ckpt_to_keep="${MAX_CKPT_TO_KEEP}" \
   trainer.logger="${LOGGER}" \
   algorithm.adv_estimator=grpo \
   algorithm.norm_adv_by_std_in_grpo=true \
