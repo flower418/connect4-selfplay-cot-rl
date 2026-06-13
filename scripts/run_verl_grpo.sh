@@ -34,7 +34,7 @@ python3 training/build_grpo.py \
 # verl GRPO entrypoint. The exact module name can vary by verl release.
 # Adjust the single trainer line below if your installation exposes a different module.
 torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}" \
-  -m verl.trainer.main_ppo \
+  -m verl.trainer.main_ppo_sync \
   data.train_files="${GRPO_INPUT}" \
   data.train_batch_size="${TRAIN_BATCH_SIZE}" \
   data.prompt_key=prompt \
@@ -42,8 +42,8 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   data.truncation=error \
   data.return_raw_chat=true \
   data.return_raw_input_ids=false \
-  model.path="${MODEL_PATH}" \
-  +model.override_config.attn_implementation="${ATTN_IMPLEMENTATION}" \
+  actor_rollout_ref.model.path="${MODEL_PATH}" \
+  +actor_rollout_ref.model.override_config.attn_implementation="${ATTN_IMPLEMENTATION}" \
   trainer.default_local_dir="${OUTPUT_DIR}" \
   trainer.project_name="${PROJECT_NAME}" \
   trainer.experiment_name="${EXPERIMENT_NAME}" \
