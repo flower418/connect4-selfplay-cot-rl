@@ -9,6 +9,7 @@ PROJECT_NAME="${PROJECT_NAME:-connect4-cot-rl}"
 EXPERIMENT_NAME="${EXPERIMENT_NAME:-seed-grpo-qwen25-05b}"
 TOTAL_TRAINING_STEPS="${TOTAL_TRAINING_STEPS:-1000}"
 TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-64}"
+PPO_MICRO_BATCH_SIZE_PER_GPU="${PPO_MICRO_BATCH_SIZE_PER_GPU:-1}"
 MICRO_BATCH_SIZE="${MICRO_BATCH_SIZE:-1}"
 MAX_LENGTH="${MAX_LENGTH:-4096}"
 LOGGER="${LOGGER:-[\"console\",\"wandb\"]}"
@@ -42,6 +43,7 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   data.truncation=error \
   data.return_raw_chat=true \
   data.return_raw_input_ids=false \
+  actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu="${PPO_MICRO_BATCH_SIZE_PER_GPU}" \
   actor_rollout_ref.model.path="${MODEL_PATH}" \
   +actor_rollout_ref.model.override_config.attn_implementation="${ATTN_IMPLEMENTATION}" \
   trainer.default_local_dir="${OUTPUT_DIR}" \
