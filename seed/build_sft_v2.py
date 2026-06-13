@@ -20,7 +20,6 @@ from data_pipeline.prompts import build_position_prompt
 from data_pipeline.schemas import SFTRecord
 from seed.deepseek_client import DeepSeekClient, DeepSeekConfig
 from seed.parse_seed_responses import parse_seed_response
-from training.build_sft import build_sft_records
 from verification.cleaner import verify_sample
 from data_pipeline.schemas import RawMoveSample
 
@@ -75,7 +74,7 @@ def generate_targeted_candidates(
     max_empty: int = 14,
     max_attempts: int = 500_000,
     train_paths: Iterable[str] = ("data/seed/seed_positions_verified_10k.jsonl",),
-    progress_every: int = 5000,
+    progress_every: int = 1000,
 ) -> int:
     rng = random.Random(seed)
     train_ids = _load_canonical_ids(train_paths)
@@ -103,7 +102,7 @@ def generate_targeted_candidates(
         seen.add(can_id)
         counts[split] += 1
         records.append(_candidate_record(f"v2_{split}_{counts[split]:04d}", split, board, player, oracle))
-        if progress_every > 0 and attempts % progress_every == 0:
+        if progress_every > 0 and (attempts % progress_every == 0 or len(records) % max(1, target_count // 10) == 0):
             write_jsonl(output_path, records)
             print(f"[v2 candidates] attempts={attempts} total={len(records)} counts={counts}", flush=True)
 
@@ -355,18 +354,36 @@ def _sample_late_position(rng: random.Random, max_empty: int) -> tuple[Board, in
 
 def _sample_rollout_move(rng: random.Random, board: Board, player: int, ply: int) -> int:
     moves = legal_moves(board)
-    evaluation = evaluate_position(board, player, depth=2)
-    if evaluation.immediate_win_moves and rng.random() < 0.85:
-        return rng.choice(evaluation.immediate_win_moves)
-    if evaluation.must_block_moves and rng.random() < 0.75:
-        return rng.choice(evaluation.must_block_moves)
-    if ply < 8 and rng.random() < 0.55:
+    immediate = _immediate_win_moves(board, player)
+    if immediate and rng.random() < 0.9:
+        return rng.choice(immediate)
+    must_block = _must_block_moves(board, player)
+    if must_block and rng.random() < 0.8:
+        return rng.choice(must_block)
+    if ply < 8 and rng.random() < 0.6:
         center_order = [3, 2, 4, 1, 5, 0, 6]
         preferred = [move for move in center_order if move in moves]
         return preferred[rng.randrange(len(preferred))]
-    if evaluation.best_moves and rng.random() < 0.45:
-        return rng.choice(evaluation.best_moves[: min(3, len(evaluation.best_moves))])
     return rng.choice(moves)
+
+
+def _immediate_win_moves(board: Board, player: int) -> List[int]:
+    wins: List[int] = []
+    for move in legal_moves(board):
+        child = apply_move(board, player, move)
+        if winner(child) == player:
+            wins.append(move)
+    return wins
+
+
+def _must_block_moves(board: Board, player: int) -> List[int]:
+    opponent = -player
+    blocks: List[int] = []
+    for move in legal_moves(board):
+        child = apply_move(board, opponent, move)
+        if winner(child) == opponent:
+            blocks.append(move)
+    return blocks
 
 
 def _assign_target_split(board: Board, player: int, oracle, legal: List[int]) -> str | None:
@@ -475,6 +492,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=20260613)
     parser.add_argument("--max-empty", type=int, default=14)
     parser.add_argument("--max-attempts", type=int, default=500000)
+    parser.add_argument("--progress-every", type=int, default=1000)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--concurrency", type=int, default=50)
@@ -493,6 +511,7 @@ def main() -> None:
             args.seed,
             args.max_empty,
             args.max_attempts,
+            progress_every=args.progress_every,
         )
         print(f"wrote {count} targeted candidates to {args.candidate_output}")
     if args.step in {"all", "collect"}:
