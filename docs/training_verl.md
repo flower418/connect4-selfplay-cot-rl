@@ -78,10 +78,27 @@ export MODEL_PATH=/path/to/Qwen2.5-0.5B-Instruct
 bash scripts/run_verl_grpo.sh
 ```
 
+For verl 0.8.x, GRPO/PPO rollout is served by an async inference backend.
+Install and select one of `vllm`, `sglang`, or `trtllm`; the script defaults to
+`ROLLOUT_NAME=vllm`. On a single-GPU machine keep rollout tensor parallelism at
+one:
+
+```bash
+export ROLLOUT_NAME=vllm
+export ROLLOUT_TP_SIZE=1
+```
+
+The GRPO trainer starts Ray workers itself, so `scripts/run_verl_grpo.sh` invokes
+`python -m verl.trainer.main_ppo_sync` directly. Do not wrap this entrypoint in
+`torchrun`; torch elastic rendezvous environment variables can leak into Ray
+workers and make initialization hang before the first training step.
+
 Default GRPO input is position-level JSONL with:
 
 - `prompt`
 - `reward_model.ground_truth`
 - `extra_info`
 
-The script assumes a verl GRPO trainer module is available at `verl.trainer.grpo_trainer`; if your installed verl release uses a different module name, change that single line in `scripts/run_verl_grpo.sh`.
+The script assumes a verl PPO/GRPO trainer module is available at
+`verl.trainer.main_ppo_sync`; if your installed verl release uses a different
+module name, change that single line in `scripts/run_verl_grpo.sh`.
