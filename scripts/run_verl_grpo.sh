@@ -22,6 +22,8 @@ ATTN_IMPLEMENTATION="${ATTN_IMPLEMENTATION:-sdpa}"
 MIN_MOVE_QUALITY="${MIN_MOVE_QUALITY:-good}"
 INCLUDE_SPLITS="${INCLUDE_SPLITS:-train}"
 REWARD_MODEL="${REWARD_MODEL:-connect4_verifier}"
+REWARD_FUNCTION_PATH="${REWARD_FUNCTION_PATH:-training/connect4_reward.py}"
+REWARD_FUNCTION_NAME="${REWARD_FUNCTION_NAME:-compute_score}"
 
 python3 training/build_grpo.py \
   --input "${GRPO_SOURCE}" \
@@ -32,22 +34,30 @@ python3 training/build_grpo.py \
 # verl GRPO entrypoint. The exact module name can vary by verl release.
 # Adjust the single trainer line below if your installation exposes a different module.
 torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}" \
-  -m verl.trainer.grpo_trainer \
+  -m verl.trainer.main_ppo \
   data.train_files="${GRPO_INPUT}" \
   data.train_batch_size="${TRAIN_BATCH_SIZE}" \
-  data.micro_batch_size_per_gpu="${MICRO_BATCH_SIZE}" \
-  data.max_length="${MAX_LENGTH}" \
-  data.messages_key=prompt \
+  data.prompt_key=prompt \
+  data.max_prompt_length="${MAX_LENGTH}" \
+  data.truncation=error \
+  data.return_raw_chat=true \
+  data.return_raw_input_ids=false \
   model.path="${MODEL_PATH}" \
   +model.override_config.attn_implementation="${ATTN_IMPLEMENTATION}" \
   trainer.default_local_dir="${OUTPUT_DIR}" \
   trainer.project_name="${PROJECT_NAME}" \
   trainer.experiment_name="${EXPERIMENT_NAME}" \
-  trainer.total_steps="${TOTAL_STEPS}" \
+  trainer.total_epochs="${TOTAL_STEPS}" \
   trainer.n_gpus_per_node="${N_GPUS_PER_NODE}" \
   trainer.save_freq="${SAVE_FREQ}" \
   trainer.test_freq="${TEST_FREQ}" \
   trainer.max_ckpt_to_keep="${MAX_CKPT_TO_KEEP}" \
   trainer.logger="${LOGGER}" \
-  reward_model.name="${REWARD_MODEL}" \
+  algorithm.adv_estimator=grpo \
+  algorithm.norm_adv_by_std_in_grpo=true \
+  reward.reward_model.enable=false \
+  reward.reward_manager.source=register \
+  reward.reward_manager.name=naive \
+  reward.custom_reward_function.path="${REWARD_FUNCTION_PATH}" \
+  reward.custom_reward_function.name="${REWARD_FUNCTION_NAME}" \
   ${LR:+optim.lr="${LR}"}
