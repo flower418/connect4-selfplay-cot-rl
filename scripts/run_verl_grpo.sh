@@ -25,7 +25,7 @@ REWARD_MODEL="${REWARD_MODEL:-connect4_verifier}"
 REWARD_FUNCTION_PATH="${REWARD_FUNCTION_PATH:-training/connect4_reward.py}"
 REWARD_FUNCTION_NAME="${REWARD_FUNCTION_NAME:-compute_score}"
 
-python3 training/build_grpo.py \
+python training/build_grpo.py \
   --input "${GRPO_SOURCE}" \
   --output "${GRPO_INPUT}" \
   --include-splits ${INCLUDE_SPLITS} \
