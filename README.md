@@ -93,6 +93,29 @@ python3 seed/build_large_seed_sft.py --step collect \
   --resume
 ```
 
+## Seed SFT v2 数据
+
+v2 用于修复 late-game 满列误选问题：2k replay 样本加合法列前置句，3k targeted late-game 样本重新调用 DeepSeek，要求 CoT 第一句说明合法列约束。
+
+```bash
+export DEEPSEEK_MODEL=deepseek-v4-flash
+
+python3 seed/build_sft_v2.py --step replay
+python3 seed/build_sft_v2.py --step candidates
+python3 seed/build_sft_v2.py --step collect \
+  --concurrency 50 \
+  --max-tokens 3200 \
+  --max-retries 1
+python3 seed/build_sft_v2.py --step verify
+python3 seed/build_sft_v2.py --step assemble
+```
+
+输出：
+
+```text
+data/train/seed_sft_v2_5k.jsonl
+```
+
 ## verl Seed SFT
 
 训练入口：
