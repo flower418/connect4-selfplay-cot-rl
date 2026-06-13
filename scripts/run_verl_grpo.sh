@@ -45,7 +45,7 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   data.truncation=error \
   data.return_raw_chat=true \
   data.return_raw_input_ids=false \
-  engine.use_torch_compile="${USE_TORCH_COMPILE}" \
+  +engine.use_torch_compile="${USE_TORCH_COMPILE}" \
   actor_rollout_ref.actor.ppo_micro_batch_size_per_gpu="${PPO_MICRO_BATCH_SIZE_PER_GPU}" \
   actor_rollout_ref.rollout.log_prob_micro_batch_size_per_gpu="${PPO_MICRO_BATCH_SIZE_PER_GPU}" \
   actor_rollout_ref.model.path="${MODEL_PATH}" \
