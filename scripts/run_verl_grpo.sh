@@ -37,6 +37,7 @@ python training/build_grpo.py \
 torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}" \
   -m verl.trainer.main_ppo_sync \
   data.train_files="${GRPO_INPUT}" \
+  data.val_files="${GRPO_INPUT}" \
   data.train_batch_size="${TRAIN_BATCH_SIZE}" \
   data.prompt_key=prompt \
   data.max_prompt_length="${MAX_LENGTH}" \
