@@ -7,7 +7,7 @@ GRPO_INPUT="${GRPO_INPUT:-data/train/seed_grpo.jsonl}"
 OUTPUT_DIR="${OUTPUT_DIR:-outputs/seed_grpo_qwen25_05b}"
 PROJECT_NAME="${PROJECT_NAME:-connect4-cot-rl}"
 EXPERIMENT_NAME="${EXPERIMENT_NAME:-seed-grpo-qwen25-05b}"
-TOTAL_STEPS="${TOTAL_STEPS:-1000}"
+TOTAL_TRAINING_STEPS="${TOTAL_TRAINING_STEPS:-1000}"
 TRAIN_BATCH_SIZE="${TRAIN_BATCH_SIZE:-64}"
 MICRO_BATCH_SIZE="${MICRO_BATCH_SIZE:-1}"
 MAX_LENGTH="${MAX_LENGTH:-4096}"
@@ -47,7 +47,7 @@ torchrun --standalone --nnodes="${NNODES}" --nproc_per_node="${N_GPUS_PER_NODE}"
   trainer.default_local_dir="${OUTPUT_DIR}" \
   trainer.project_name="${PROJECT_NAME}" \
   trainer.experiment_name="${EXPERIMENT_NAME}" \
-  trainer.total_epochs="${TOTAL_STEPS}" \
+  trainer.total_training_steps="${TOTAL_TRAINING_STEPS}" \
   trainer.n_gpus_per_node="${N_GPUS_PER_NODE}" \
   trainer.save_freq="${SAVE_FREQ}" \
   trainer.test_freq="${TEST_FREQ}" \
