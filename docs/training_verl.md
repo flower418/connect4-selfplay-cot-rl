@@ -1,8 +1,8 @@
-# verl SFT Training
+# verl SFT / GRPO Training
 
 ## Goal
 
-Run cold-start SFT on `Qwen2.5-0.5B-Instruct` using the verified seed dataset.
+Run cold-start SFT on `Qwen2.5-0.5B-Instruct` using the verified seed dataset, then reuse the same verified positions for GRPO prompt export.
 
 ## Data
 
@@ -58,3 +58,30 @@ python3 -m verl.trainer.fsdp_sft_trainer
 ```
 
 Keep `data/train/seed_sft.jsonl` fixed for the first baseline comparison.
+
+## GRPO
+
+Export GRPO prompts from verified positions:
+
+```bash
+python3 training/build_grpo.py \
+  --input data/seed/seed_positions_verified_10k.jsonl \
+  --output data/train/seed_grpo.jsonl \
+  --include-splits train \
+  --min-move-quality good
+```
+
+Run:
+
+```bash
+export MODEL_PATH=/path/to/Qwen2.5-0.5B-Instruct
+bash scripts/run_verl_grpo.sh
+```
+
+Default GRPO input is position-level JSONL with:
+
+- `prompt`
+- `reward_model.ground_truth`
+- `extra_info`
+
+The script assumes a verl GRPO trainer module is available at `verl.trainer.grpo_trainer`; if your installed verl release uses a different module name, change that single line in `scripts/run_verl_grpo.sh`.
